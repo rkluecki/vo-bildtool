@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
+# erste Python Programm
 
 class VOBildTool:
     def __init__(self, root):
@@ -305,7 +306,7 @@ class VOBildTool:
 
         if not changed_images:
             messagebox.showinfo("Speichern", "Keine gedrehten Bilder vorhanden.")
-            return
+            returngit remote add origin https://github.com/rkluecki/vo-bildtool.git
 
         answer = messagebox.askyesno(
             "Bestätigung",
