@@ -426,18 +426,44 @@ class VOBildTool:
         saved_count = 0
 
         try:
-            for path, rotation in changed_images:
+           for path in self.image_files:
+
+                rotation = self.rotation_map.get(path, 0)
+                crop = self.crop_map.get(path)
+
+                if rotation == 0 and not crop:
+                    continue
+
                 image = Image.open(path)
-                rotated = image.rotate(rotation, expand=True)
+                result = image
+
+                # Rotation anwenden
+                if rotation != 0:
+                    result = result.rotate(rotation, expand=True)
+
+                # Crop anwenden
+                if crop:
+                    # temporär Bild setzen für Berechnung
+                    self.current_pil_image = result
+
+                    crop_box = self.get_crop_box_for_current_image()
+
+                    if crop_box:
+                        result = result.crop(crop_box)
 
                 save_path = path
-                rotated.save(save_path)
+                result.save(save_path)
 
                 self.rotation_map[path] = 0
                 saved_count += 1
 
-            self.update_image_preview()
-            messagebox.showinfo("Speichern", f"{saved_count} Bilder gespeichert.")
+                # Crop-Daten zurücksetzen (optional aber sinnvoll)
+                self.crop_map.clear()
+
+                # aktuelles Bild neu laden
+                self.show_current_image()
+
+                messagebox.showinfo("Speichern", f"{saved_count} Bilder gespeichert.")
 
         except Exception as e:
             messagebox.showerror("Fehler", str(e))
