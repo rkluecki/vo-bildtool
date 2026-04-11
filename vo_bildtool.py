@@ -18,6 +18,20 @@ class VOBildTool:
         self.current_pil_image = None
         self.current_tk_image = None
         self.rotation_map = {}
+        self.crop_map = {}
+
+        self.crop_start_x = None
+        self.crop_start_y = None
+        self.crop_rect_id = None
+        self.crop_end_x = None
+        self.crop_end_y = None
+
+        self.display_image_x = 0
+        self.display_image_y = 0
+        self.display_image_width = 0
+        self.display_image_height = 0
+        self.original_image_width = 0
+        self.original_image_height = 0
 
         self.allowed_extensions = (".gif", ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
 
@@ -124,10 +138,14 @@ class VOBildTool:
         self.image_frame = tk.Frame(self.root, bd=2, relief=tk.SUNKEN)
         self.image_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.image_label = tk.Label(self.image_frame, text="Noch kein Bild geladen")
-        self.image_label.pack(expand=True)
+      #  self.canvas = tk.Canvas(self.image_frame, bg="black")
+        self.canvas = tk.Canvas(self.image_frame, bg="#777777")
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.root.bind("<Configure>", self.on_window_resize)
+        self.canvas.bind("<Button-1>", self.on_mouse_down)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
 
     def open_folder(self):
         folder = filedialog.askdirectory(title="Bildordner auswählen")
@@ -197,23 +215,113 @@ class VOBildTool:
         if self.current_pil_image is None:
             return
 
-        frame_width = self.image_frame.winfo_width()
-        frame_height = self.image_frame.winfo_height()
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
 
-        if frame_width < 50 or frame_height < 50:
+        if canvas_width < 50 or canvas_height < 50:
+            self.root.after(100, self.update_image_preview)
             return
 
         path = self.image_files[self.current_index]
         rotation = self.rotation_map.get(path, 0)
 
         image_copy = self.current_pil_image.copy().rotate(rotation, expand=True)
-        image_copy.thumbnail((frame_width - 20, frame_height - 20))
+
+        self.original_image_width = image_copy.width
+        self.original_image_height = image_copy.height
+
+        image_copy.thumbnail((canvas_width - 20, canvas_height - 20))
+
+        self.display_image_width = image_copy.width
+        self.display_image_height = image_copy.height
 
         self.current_tk_image = ImageTk.PhotoImage(image_copy)
-        self.image_label.config(image=self.current_tk_image, text="")
+
+        self.canvas.delete("all")
+
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        image_x = (canvas_width - self.display_image_width) // 2
+        image_y = (canvas_height - self.display_image_height) // 2
+
+        self.display_image_x = image_x
+        self.display_image_y = image_y
+
+        self.canvas.create_image(
+            image_x,
+            image_y,
+            image=self.current_tk_image,
+            anchor="nw"
+        )
+
+        path = self.image_files[self.current_index]
+        saved_crop = self.crop_map.get(path)
+
+        if saved_crop:
+            x1, y1, x2, y2 = saved_crop
+            self.crop_rect_id = self.canvas.create_rectangle(
+                x1, y1, x2, y2,
+                outline="red",
+                width=2
+            )
+        else:
+            self.crop_rect_id = None
+
         path = self.image_files[self.current_index]
         rotation = self.rotation_map.get(path, 0)
         self.lbl_count.config(text=f"Bild {self.current_index + 1} von {len(self.image_files)}   |   Drehung: {rotation}°")
+
+
+    def get_crop_box_for_current_image(self):
+        path = self.image_files[self.current_index]
+        saved_crop = self.crop_map.get(path)
+
+        if not saved_crop:
+            return None
+
+        x1, y1, x2, y2 = saved_crop
+
+        x_left = min(x1, x2)
+        y_top = min(y1, y2)
+        x_right = max(x1, x2)
+        y_bottom = max(y1, y2)
+
+        image_left = self.display_image_x
+        image_top = self.display_image_y
+        image_right = self.display_image_x + self.display_image_width
+        image_bottom = self.display_image_y + self.display_image_height
+
+        x_left = max(x_left, image_left)
+        y_top = max(y_top, image_top)
+        x_right = min(x_right, image_right)
+        y_bottom = min(y_bottom, image_bottom)
+
+        if x_right <= x_left or y_bottom <= y_top:
+            return None
+
+        rel_x1 = x_left - self.display_image_x
+        rel_y1 = y_top - self.display_image_y
+        rel_x2 = x_right - self.display_image_x
+        rel_y2 = y_bottom - self.display_image_y
+
+        scale_x = self.original_image_width / self.display_image_width
+        scale_y = self.original_image_height / self.display_image_height
+
+        img_x1 = int(rel_x1 * scale_x)
+        img_y1 = int(rel_y1 * scale_y)
+        img_x2 = int(rel_x2 * scale_x)
+        img_y2 = int(rel_y2 * scale_y)
+
+        img_x1 = max(0, min(img_x1, self.original_image_width))
+        img_y1 = max(0, min(img_y1, self.original_image_height))
+        img_x2 = max(0, min(img_x2, self.original_image_width))
+        img_y2 = max(0, min(img_y2, self.original_image_height))
+
+        if img_x2 <= img_x1 or img_y2 <= img_y1:
+            return None
+
+        return (img_x1, img_y1, img_x2, img_y2)
 
     def on_window_resize(self, event):
         if self.current_pil_image is not None:
@@ -306,7 +414,6 @@ class VOBildTool:
 
         if not changed_images:
             messagebox.showinfo("Speichern", "Keine gedrehten Bilder vorhanden.")
-            returngit remote add origin https://github.com/rkluecki/vo-bildtool.git
 
         answer = messagebox.askyesno(
             "Bestätigung",
@@ -334,6 +441,76 @@ class VOBildTool:
 
         except Exception as e:
             messagebox.showerror("Fehler", str(e))
+
+    def on_mouse_down(self, event):
+        if not self.image_files:
+            return
+
+        path = self.image_files[self.current_index]
+
+        if self.crop_rect_id is not None:
+            self.canvas.delete(self.crop_rect_id)
+            self.crop_rect_id = None
+
+        if path in self.crop_map:
+            del self.crop_map[path]
+
+        self.crop_end_x = None
+        self.crop_end_y = None
+
+        self.crop_start_x = event.x
+        self.crop_start_y = event.y
+
+        print(f"Neuer Start: {event.x}, {event.y}")
+
+    def on_mouse_drag(self, event):
+        if self.crop_start_x is None or self.crop_start_y is None:
+            return
+
+        self.crop_end_x = event.x
+        self.crop_end_y = event.y
+
+        if self.crop_rect_id is not None:
+            self.canvas.delete(self.crop_rect_id)
+
+        self.crop_rect_id = self.canvas.create_rectangle(
+            self.crop_start_x,
+            self.crop_start_y,
+            self.crop_end_x,
+            self.crop_end_y,
+            outline="red",
+            width=2
+        )
+
+
+    def on_mouse_up(self, event):
+        if self.crop_start_x is None or self.crop_start_y is None:
+            return
+
+        self.crop_end_x = event.x
+        self.crop_end_y = event.y
+
+        path = self.image_files[self.current_index]
+
+        self.crop_map[path] = (
+            self.crop_start_x,
+            self.crop_start_y,
+            self.crop_end_x,
+            self.crop_end_y
+        )
+
+        print(
+            f"Crop-Rechteck gespeichert: "
+            f"({self.crop_start_x}, {self.crop_start_y}) -> "
+            f"({self.crop_end_x}, {self.crop_end_y})"
+        )
+
+        crop_box = self.get_crop_box_for_current_image()
+
+        if crop_box:
+            print(f"Echte Bildkoordinaten: {crop_box}")
+        else:
+            print("Kein gültiger Zuschneidebereich im Bild.")
 
 if __name__ == "__main__":
     root = tk.Tk()
