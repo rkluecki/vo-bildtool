@@ -401,19 +401,18 @@ class VOBildTool:
 
     def save_images(self):
 
-        target_folder = filedialog.askdirectory(title="Zielordner auswählen")
-
-        if not target_folder:
-            return
-
         changed_images = []
 
-        for path, rotation in self.rotation_map.items():
-            if rotation != 0:
-                changed_images.append((path, rotation))
+        for path in self.image_files:
+            rotation = self.rotation_map.get(path, 0)
+            crop = self.crop_map.get(path)
+
+            if rotation != 0 or crop:
+                changed_images.append(path)
 
         if not changed_images:
-            messagebox.showinfo("Speichern", "Keine gedrehten Bilder vorhanden.")
+            messagebox.showinfo("Speichern", "Keine geänderten Bilder vorhanden.")
+            return
 
         answer = messagebox.askyesno(
             "Bestätigung",
@@ -426,8 +425,7 @@ class VOBildTool:
         saved_count = 0
 
         try:
-           for path in self.image_files:
-
+            for path in self.image_files:
                 rotation = self.rotation_map.get(path, 0)
                 crop = self.crop_map.get(path)
 
@@ -435,35 +433,47 @@ class VOBildTool:
                     continue
 
                 image = Image.open(path)
-                result = image
+                result = image.copy()
 
-                # Rotation anwenden
+                # Rotation zuerst anwenden
                 if rotation != 0:
                     result = result.rotate(rotation, expand=True)
 
-                # Crop anwenden
+                # Danach Crop anwenden
                 if crop:
-                    # temporär Bild setzen für Berechnung
-                    self.current_pil_image = result
+                    x1, y1, x2, y2 = crop
 
-                    crop_box = self.get_crop_box_for_current_image()
+                    left = min(x1, x2)
+                    top = min(y1, y2)
+                    right = max(x1, x2)
+                    bottom = max(y1, y2)
 
-                    if crop_box:
-                        result = result.crop(crop_box)
+                    scale_x = result.width / self.display_image_width
+                    scale_y = result.height / self.display_image_height
 
-                save_path = path
-                result.save(save_path)
+                    img_x1 = int((left - self.display_image_x) * scale_x)
+                    img_y1 = int((top - self.display_image_y) * scale_y)
+                    img_x2 = int((right - self.display_image_x) * scale_x)
+                    img_y2 = int((bottom - self.display_image_y) * scale_y)
+
+                    img_x1 = max(0, min(img_x1, result.width))
+                    img_y1 = max(0, min(img_y1, result.height))
+                    img_x2 = max(0, min(img_x2, result.width))
+                    img_y2 = max(0, min(img_y2, result.height))
+
+                    if img_x2 > img_x1 and img_y2 > img_y1:
+                        result = result.crop((img_x1, img_y1, img_x2, img_y2))
+
+                result.save(path)
 
                 self.rotation_map[path] = 0
+                if path in self.crop_map:
+                    del self.crop_map[path]
+
                 saved_count += 1
 
-                # Crop-Daten zurücksetzen (optional aber sinnvoll)
-                self.crop_map.clear()
-
-                # aktuelles Bild neu laden
-                self.show_current_image()
-
-                messagebox.showinfo("Speichern", f"{saved_count} Bilder gespeichert.")
+            self.show_current_image()
+            messagebox.showinfo("Speichern", f"{saved_count} Bilder gespeichert.")
 
         except Exception as e:
             messagebox.showerror("Fehler", str(e))
