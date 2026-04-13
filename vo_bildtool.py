@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
+from tkinter import ttk
 
 # erste Python Programm
 
@@ -146,6 +147,14 @@ class VOBildTool:
         self.canvas.bind("<Button-1>", self.on_mouse_down)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+
+        self.progress = ttk.Progressbar(
+            self.root, orient="horizontal", length=300, mode="determinate"
+        )
+        self.progress.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+
+        self.lbl_progress = tk.Label(self.root, text="", anchor="w")
+        self.lbl_progress.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
 
     def open_folder(self):
         folder = filedialog.askdirectory(title="Bildordner auswählen")
@@ -394,6 +403,9 @@ class VOBildTool:
         if not self.image_files:
             return
 
+        self.progress["value"] = 0
+        self.lbl_progress.config(text="")
+
         path = self.image_files[self.current_index]
 
         current_rotation = self.rotation_map.get(path, 0)
@@ -408,6 +420,9 @@ class VOBildTool:
         if not self.image_files:
             return
 
+        self.progress["value"] = 0
+        self.lbl_progress.config(text="")
+
         path = self.image_files[self.current_index]
 
         current_rotation = self.rotation_map.get(path, 0)
@@ -421,6 +436,9 @@ class VOBildTool:
 
         if not self.image_files:
             return
+
+        self.progress["value"] = 0
+        self.lbl_progress.config(text="")
 
         path = self.image_files[self.current_index]
 
@@ -465,6 +483,10 @@ class VOBildTool:
 
         saved_count = 0
 
+        total = len(changed_images)
+        self.progress["maximum"] = total
+        self.progress["value"] = 0
+
         try:
             for path in self.image_files:
                 rotation = self.rotation_map.get(path, 0)
@@ -475,6 +497,12 @@ class VOBildTool:
 
                 image = Image.open(path)
                 result = image.copy()
+
+                file_name = os.path.basename(path)
+                self.lbl_progress.config(
+                    text=f"Speichere Bild {saved_count + 1} von {total}: {file_name}"
+                )
+                self.root.update_idletasks()
 
                 if rotation != 0:
                     result = result.rotate(rotation, expand=True)
@@ -498,15 +526,21 @@ class VOBildTool:
 
                 saved_count += 1
 
-            self.show_current_image()
-            messagebox.showinfo("Speichern", f"{saved_count} Bilder gespeichert.")
+                self.progress["value"] = saved_count
+                self.root.update_idletasks()
 
+            self.progress["value"] = saved_count
+            self.lbl_progress.config(text=f"{saved_count} Bilder gespeichert.")
+            self.show_current_image()
         except Exception as e:
             messagebox.showerror("Fehler", str(e))
 
     def on_mouse_down(self, event):
         if not self.image_files:
             return
+
+        self.progress["value"] = 0
+        self.lbl_progress.config(text="")
 
         path = self.image_files[self.current_index]
 
