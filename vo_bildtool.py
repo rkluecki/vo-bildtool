@@ -276,7 +276,16 @@ class VOBildTool:
         saved_crop = self.crop_map.get(path)
 
         if saved_crop:
-            x1, y1, x2, y2 = saved_crop
+            img_x1, img_y1, img_x2, img_y2 = saved_crop
+
+            scale_x = self.display_image_width / self.original_image_width
+            scale_y = self.display_image_height / self.original_image_height
+
+            x1 = self.display_image_x + int(img_x1 * scale_x)
+            y1 = self.display_image_y + int(img_y1 * scale_y)
+            x2 = self.display_image_x + int(img_x2 * scale_x)
+            y2 = self.display_image_y + int(img_y2 * scale_y)
+
             self.crop_rect_id = self.canvas.create_rectangle(
                 x1, y1, x2, y2, outline="red", width=2
             )
