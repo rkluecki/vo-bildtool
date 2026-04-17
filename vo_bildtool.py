@@ -28,6 +28,10 @@ class VOBildTool:
         self.crop_end_x = None
         self.crop_end_y = None
 
+        self.dragging_crop = False
+        self.drag_offset_x = 0
+        self.drag_offset_y = 0
+
         self.display_image_x = 0
         self.display_image_y = 0
         self.display_image_width = 0
@@ -543,6 +547,29 @@ class VOBildTool:
         self.lbl_progress.config(text="")
 
         path = self.image_files[self.current_index]
+        saved_crop = self.crop_map.get(path)
+
+        if saved_crop:
+            img_x1, img_y1, img_x2, img_y2 = saved_crop
+
+            scale_x = self.display_image_width / self.original_image_width
+            scale_y = self.display_image_height / self.original_image_height
+
+            x1 = self.display_image_x + int(img_x1 * scale_x)
+            y1 = self.display_image_y + int(img_y1 * scale_y)
+            x2 = self.display_image_x + int(img_x2 * scale_x)
+            y2 = self.display_image_y + int(img_y2 * scale_y)
+
+            left = min(x1, x2)
+            top = min(y1, y2)
+            right = max(x1, x2)
+            bottom = max(y1, y2)
+
+            if left <= event.x <= right and top <= event.y <= bottom:
+                self.dragging_crop = True
+                self.drag_offset_x = event.x - left
+                self.drag_offset_y = event.y - top
+                return
 
         if self.crop_rect_id is not None:
             self.canvas.delete(self.crop_rect_id)
@@ -551,15 +578,55 @@ class VOBildTool:
         if path in self.crop_map:
             del self.crop_map[path]
 
+        self.dragging_crop = False
         self.crop_end_x = None
         self.crop_end_y = None
 
         self.crop_start_x = event.x
         self.crop_start_y = event.y
 
-        print(f"Neuer Start: {event.x}, {event.y}")
-
     def on_mouse_drag(self, event):
+        if not self.image_files:
+            return
+
+        path = self.image_files[self.current_index]
+
+        if self.dragging_crop:
+            saved_crop = self.crop_map.get(path)
+            if not saved_crop:
+                return
+
+            img_x1, img_y1, img_x2, img_y2 = saved_crop
+
+            scale_x = self.display_image_width / self.original_image_width
+            scale_y = self.display_image_height / self.original_image_height
+
+            x1 = self.display_image_x + int(img_x1 * scale_x)
+            y1 = self.display_image_y + int(img_y1 * scale_y)
+            x2 = self.display_image_x + int(img_x2 * scale_x)
+            y2 = self.display_image_y + int(img_y2 * scale_y)
+
+            width = x2 - x1
+            height = y2 - y1
+
+            new_left = event.x - self.drag_offset_x
+            new_top = event.y - self.drag_offset_y
+            new_right = new_left + width
+            new_bottom = new_top + height
+
+            if self.crop_rect_id is not None:
+                self.canvas.delete(self.crop_rect_id)
+
+            self.crop_rect_id = self.canvas.create_rectangle(
+                new_left, new_top, new_right, new_bottom, outline="red", width=2
+            )
+
+            self.crop_start_x = new_left
+            self.crop_start_y = new_top
+            self.crop_end_x = new_right
+            self.crop_end_y = new_bottom
+            return
+
         if self.crop_start_x is None or self.crop_start_y is None:
             return
 
@@ -579,11 +646,16 @@ class VOBildTool:
         )
 
     def on_mouse_up(self, event):
-        if self.crop_start_x is None or self.crop_start_y is None:
+        if self.dragging_crop:
+            self.dragging_crop = False
+        elif self.crop_start_x is None or self.crop_start_y is None:
             return
+        else:
+            self.crop_end_x = event.x
+            self.crop_end_y = event.y
 
-        self.crop_end_x = event.x
-        self.crop_end_y = event.y
+        if self.crop_end_x is None or self.crop_end_y is None:
+            return
 
         path = self.image_files[self.current_index]
 
@@ -630,11 +702,6 @@ class VOBildTool:
         img_y2 = max(0, min(img_y2, self.original_image_height))
 
         self.crop_map[path] = (img_x1, img_y1, img_x2, img_y2)
-
-        print(
-            f"Crop-Bildkoordinaten gespeichert: "
-            f"({img_x1}, {img_y1}) -> ({img_x2}, {img_y2})"
-        )
 
 
 if __name__ == "__main__":
