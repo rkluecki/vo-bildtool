@@ -86,15 +86,15 @@ class VOBildTool:
         )
         self.btn_prev.pack(side=tk.LEFT, padx=5)
 
-        self.btn_rotate_left = tk.Button(
-            top_frame, text="Links ⟲", command=self.rotate_left, width=15
-        )
-        self.btn_rotate_left.pack(side=tk.LEFT, padx=5)
-
         self.btn_rotate_right = tk.Button(
             top_frame, text="Rechts ⟳", command=self.rotate_right, width=15
         )
         self.btn_rotate_right.pack(side=tk.LEFT, padx=5)
+
+        self.btn_rotate_left = tk.Button(
+            top_frame, text="Links ⟲", command=self.rotate_left, width=15
+        )
+        self.btn_rotate_left.pack(side=tk.LEFT, padx=5)
 
         self.btn_rotate_180 = tk.Button(
             top_frame, text="180°", command=self.rotate_180, width=10
@@ -411,52 +411,6 @@ class VOBildTool:
     def validate_number(self, value):
         return value.isdigit() or value == ""
 
-    def rotate_crop_box(self, path, angle):
-        if path not in self.crop_map:
-            return
-
-        x1, y1, x2, y2 = self.crop_map[path]
-
-        left = min(x1, x2)
-        top = min(y1, y2)
-        right = max(x1, x2)
-        bottom = max(y1, y2)
-
-        current_rotation = self.rotation_map.get(path, 0)
-
-        original_w = self.current_pil_image.width
-        original_h = self.current_pil_image.height
-
-        if current_rotation in (0, 180):
-            current_w = original_w
-            current_h = original_h
-        else:
-            current_w = original_h
-            current_h = original_w
-
-        if angle == 90:
-            new_left = top
-            new_top = current_w - right
-            new_right = bottom
-            new_bottom = current_w - left
-
-        elif angle == 270:
-            new_left = current_h - bottom
-            new_top = left
-            new_right = current_h - top
-            new_bottom = right
-
-        elif angle == 180:
-            new_left = current_w - right
-            new_top = current_h - bottom
-            new_right = current_w - left
-            new_bottom = current_h - top
-
-        else:
-            return
-
-        self.crop_map[path] = (new_left, new_top, new_right, new_bottom)
-
     def rotate_right(self, event=None):
 
         if not self.image_files:
@@ -470,7 +424,6 @@ class VOBildTool:
         current_rotation = self.rotation_map.get(path, 0)
         new_rotation = (current_rotation + 270) % 360
 
-        self.rotate_crop_box(path, 270)
         self.rotation_map[path] = new_rotation
 
         self.update_image_preview()
@@ -488,7 +441,6 @@ class VOBildTool:
         current_rotation = self.rotation_map.get(path, 0)
         new_rotation = (current_rotation + 90) % 360
 
-        self.rotate_crop_box(path, 90)
         self.rotation_map[path] = new_rotation
 
         self.update_image_preview()
@@ -506,7 +458,6 @@ class VOBildTool:
         current_rotation = self.rotation_map.get(path, 0)
         new_rotation = (current_rotation + 180) % 360
 
-        self.rotate_crop_box(path, 180)
         self.rotation_map[path] = new_rotation
 
         self.update_image_preview()
