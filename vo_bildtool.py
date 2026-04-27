@@ -1,16 +1,60 @@
 import os
+import sys
 import tkinter as tk
+from datetime import datetime
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
 from tkinter import ttk
+from PIL import Image, ImageTk
 
+#
 # erste Python Programm
+#
+
+
+def resource_path(relative_path):
+    """Pfad funktioniert im normalen Python-Start und später auch in der EXE."""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+def show_splash(root):
+    splash = tk.Toplevel(root)
+    splash.overrideredirect(True)
+    splash.configure(bg="#F8F5EF")
+
+    image_path = resource_path("assets/pagina_splash.png")
+
+    # Größe wie bei der BriefDB-Anwendung
+    splash_width = 700
+    splash_height = 700
+
+    image = Image.open(image_path)
+    image = image.resize((splash_width, splash_height), Image.LANCZOS)
+    splash_image = ImageTk.PhotoImage(image)
+
+    lbl_image = tk.Label(splash, image=splash_image, borderwidth=0, bg="#F8F5EF")
+    lbl_image.image = splash_image
+    lbl_image.pack()
+
+    screen_width = splash.winfo_screenwidth()
+    screen_height = splash.winfo_screenheight()
+
+    x = (screen_width - splash_width) // 2
+    y = (screen_height - splash_height) // 2
+
+    splash.geometry(f"{splash_width}x{splash_height}+{x}+{y}")
+
+    return splash
 
 
 class VOBildTool:
     def __init__(self, root):
         self.root = root
-        self.root.title("VO Bildausrichtungs-Werkzeug - Schritt 1")
+        self.root.title("Pagina – Bildaufbereitung für historische Seiten")
         self.root.geometry("1400x900")
         self.root.state("zoomed")
 
@@ -130,6 +174,42 @@ class VOBildTool:
 
         self.lbl_folder = tk.Label(top_frame, text="Kein Ordner gewählt", anchor="w")
         self.lbl_folder.pack(side=tk.LEFT, padx=10)
+
+        # Kleiner Branding-Bereich oben rechts
+        self.logo_frame = tk.Frame(
+            top_frame, bg="#F8F5EF", bd=1, relief=tk.SOLID, padx=8, pady=6
+        )
+        self.logo_frame.pack(side=tk.RIGHT, padx=(20, 10), pady=(0, 4), anchor="ne")
+
+        try:
+            logo_path = resource_path("assets/pagina_logo.png")
+
+            logo_image = Image.open(logo_path)
+            logo_image = logo_image.resize((70, 70), Image.LANCZOS)
+
+            self.logo_tk_image = ImageTk.PhotoImage(logo_image)
+
+            self.lbl_logo = tk.Label(
+                self.logo_frame, image=self.logo_tk_image, borderwidth=0
+            )
+            self.lbl_logo.pack(anchor="e")
+
+        except Exception as e:
+            self.lbl_logo = tk.Label(
+                self.logo_frame,
+                text="Pagina",
+                font=("Georgia", 16, "bold"),
+                fg="#23424A",
+            )
+            self.lbl_logo.pack(anchor="e")
+
+        self.lbl_logo_year = tk.Label(
+            self.logo_frame,
+            text=str(datetime.now().year),
+            font=("Segoe UI", 10),
+            fg="#6B5A35",
+        )
+        self.lbl_logo_year.pack(anchor="e")
 
         info_frame = tk.Frame(self.root)
         info_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(0, 10))
@@ -764,5 +844,21 @@ class VOBildTool:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = VOBildTool(root)
-    root.mainloop()
+    root.withdraw()
+
+    splash = show_splash(root)
+
+    def start_app():
+        splash.destroy()
+
+        app = VOBildTool(root)
+        root.title("Pagina – Bildaufbereitung für historische Seiten")
+
+        root.deiconify()
+
+    root.after(3000, start_app)
+
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        root.destroy()
