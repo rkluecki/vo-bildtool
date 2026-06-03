@@ -5,6 +5,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 from PIL import Image, ImageTk
+from pathlib import Path
 
 #
 # erste Python Programm
@@ -21,12 +22,54 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+def suite_resource_path(filename):
+    """
+    Liefert den Pfad zu den offiziellen Pagina-Suite-Ressourcen.
+
+    Erwartete Struktur:
+    Pagina
+    ├── app
+    │   └── Python
+    └── resources
+        ├── icon.png
+        ├── icon.ico
+        └── startbild.png
+    """
+    if getattr(sys, "frozen", False):
+        current = Path(sys.executable).resolve().parent
+    else:
+        current = Path(__file__).resolve().parent
+
+    while current is not None:
+        candidate = current / "resources"
+
+        if (
+            candidate.exists()
+            and (candidate / "icon.png").exists()
+            and (candidate / "icon.ico").exists()
+            and (candidate / "startbild.png").exists()
+        ):
+            return candidate / filename
+
+        parent = current.parent
+
+        if parent == current:
+            break
+
+        current = parent
+
+    raise FileNotFoundError(
+        "Der Suite-Ressourcenordner für Pagina wurde nicht gefunden. "
+        "Erwartet wird ein Ordner 'resources' mit icon.png, icon.ico und startbild.png."
+    )
+
+
 def show_splash(root):
     splash = tk.Toplevel(root)
     splash.overrideredirect(True)
     splash.configure(bg="#F8F5EF")
 
-    image_path = resource_path("assets/pagina_splash.png")
+    image_path = suite_resource_path("startbild.png")
 
     # Größe wie bei der BriefDB-Anwendung
     splash_width = 700
@@ -49,6 +92,30 @@ def show_splash(root):
     splash.geometry(f"{splash_width}x{splash_height}+{x}+{y}")
 
     return splash
+
+
+def set_window_icon(window):
+    """
+    Setzt das Pagina-Fenstericon aus dem offiziellen Suite-resources-Ordner.
+    Nutzt sowohl iconbitmap (.ico) als auch iconphoto (.png),
+    weil Tkinter unter Windows je nach Startart unterschiedlich reagiert.
+    """
+    try:
+        icon_ico_path = suite_resource_path("icon.ico")
+        window.iconbitmap(str(icon_ico_path))
+    except Exception as e:
+        print(f"Fenstericon .ico konnte nicht geladen werden: {e}")
+
+    try:
+        icon_png_path = suite_resource_path("icon.png")
+        icon_image = tk.PhotoImage(file=str(icon_png_path))
+
+        # Referenz speichern, sonst kann Tkinter das Bild wieder verlieren
+        window._pagina_icon_image = icon_image
+
+        window.iconphoto(True, icon_image)
+    except Exception as e:
+        print(f"Fenstericon .png konnte nicht geladen werden: {e}")
 
 
 class VOBildTool:
@@ -182,7 +249,7 @@ class VOBildTool:
         self.logo_frame.pack(side=tk.RIGHT, padx=(20, 10), pady=(0, 4), anchor="ne")
 
         try:
-            logo_path = resource_path("assets/pagina_logo.png")
+            logo_path = suite_resource_path("icon.png")
 
             logo_image = Image.open(logo_path)
             logo_image = logo_image.resize((70, 70), Image.LANCZOS)
@@ -844,6 +911,7 @@ class VOBildTool:
 
 if __name__ == "__main__":
     root = tk.Tk()
+    set_window_icon(root)
     root.withdraw()
 
     splash = show_splash(root)
@@ -855,6 +923,8 @@ if __name__ == "__main__":
         root.title("Pagina – Bildaufbereitung für historische Seiten")
 
         root.deiconify()
+        set_window_icon(root)
+        root.update_idletasks()
 
     root.after(3000, start_app)
 
