@@ -7,6 +7,15 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from pathlib import Path
 
+APP_NAME = "Pagina"
+APP_TITLE = "Pagina – Historisches Bildwerkzeug"
+APP_VERSION = "0.3.0"
+APP_SUITE = "Historische Software-Suite"
+APP_AUTHOR = "Ronald Klückmann"
+APP_COPYRIGHT = "© 2026 Ronald Klückmann. Alle Rechte vorbehalten."
+APP_TITLE_WITH_VERSION = f"{APP_TITLE} · Version {APP_VERSION}"
+APP_COPYRIGHT_SHORT = f"Version {APP_VERSION} · © 2026 Ronald Klückmann"
+
 #
 # erste Python Programm
 #
@@ -121,7 +130,7 @@ def set_window_icon(window):
 class VOBildTool:
     def __init__(self, root):
         self.root = root
-        self.root.title("Pagina – Bildaufbereitung für historische Seiten")
+        self.root.title(APP_TITLE_WITH_VERSION)
         self.root.geometry("1400x900")
         self.root.state("zoomed")
 
@@ -272,11 +281,16 @@ class VOBildTool:
 
         self.lbl_logo_year = tk.Label(
             self.logo_frame,
-            text=str(datetime.now().year),
-            font=("Segoe UI", 10),
+            text=APP_COPYRIGHT_SHORT,
+            font=("Segoe UI", 8),
             fg="#6B5A35",
         )
         self.lbl_logo_year.pack(anchor="e")
+
+        self.btn_about = tk.Button(
+            self.logo_frame, text="Über", command=self.show_about_dialog, width=8
+        )
+        self.btn_about.pack(anchor="e", pady=(4, 0))
 
         info_frame = tk.Frame(self.root)
         info_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(0, 10))
@@ -306,6 +320,16 @@ class VOBildTool:
 
         self.lbl_progress = tk.Label(self.root, text="", anchor="w")
         self.lbl_progress.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=(0, 5))
+
+    def show_about_dialog(self):
+        messagebox.showinfo(
+            f"Über {APP_NAME}",
+            f"{APP_TITLE}\n"
+            f"Version {APP_VERSION}\n\n"
+            f"{APP_SUITE}\n\n"
+            f"{APP_COPYRIGHT}\n\n"
+            "Private Forschungs- und Sammlungssoftware.",
+        )
 
     def open_folder(self):
         folder = filedialog.askdirectory(title="Bildordner auswählen")
@@ -920,7 +944,7 @@ if __name__ == "__main__":
         splash.destroy()
 
         app = VOBildTool(root)
-        root.title("Pagina – Bildaufbereitung für historische Seiten")
+        root.title(APP_TITLE_WITH_VERSION)
 
         root.deiconify()
         set_window_icon(root)
